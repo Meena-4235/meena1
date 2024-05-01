@@ -1,0 +1,61 @@
+import pandas as pd
+# Load dataset
+df = pd.read_csv('dataset1.csv')
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+# Preprocess data
+tfidf_vectorizer = TfidfVectorizer()
+X_train_tfidf = tfidf_vectorizer.fit_transform(df['user_utterance'])
+
+# Train Logistic Regression model
+lr_model = LogisticRegression()
+lr_model.fit(X_train_tfidf, df['intent'])
+import spacy
+
+# Load spaCy NER model
+nlp = spacy.load('en_core_web_sm')
+
+# Extract entities from user utterances
+entities = []
+for utterance in df['user_utterance']:
+    doc = nlp(utterance)
+    entities.append([(ent.text, ent.label_) for ent in doc.ents])
+context = {}
+
+def fill_slots(utterance):
+    # Extract entities
+    doc = nlp(utterance)
+    entities = [(ent.text, ent.label_) for ent in doc.ents]
+
+    # Update context based on intent and entities
+    if df['intent'] == 'book_flight':
+        context['departure_city'] = entities['departure_city']
+        context['destination_city'] = entities['destination_city']
+        # Other relevant slots
+
+# Example usage
+user_input = "Book a flight from New York to Los Angeles"
+fill_slots(user_input)
+def generate_response(intent, entities, context):
+    if intent == 'book_flight':
+        return f"Sure, I'll book a flight from {context['departure_city']} to {context['destination_city']}."
+    # Other intent-based responses
+
+# Example usage
+intent = lr_model.predict(tfidf_vectorizer.transform([user_input]))[0]
+response = generate_response(intent, entities, context)
+print(response)
+from sklearn.metrics import classification_report
+
+# Evaluate intent recognition model
+intent_predictions = lr_model.predict(X_train_tfidf)
+print(classification_report(df['intent'], intent_predictions))
+
+# Simulate dialog scenario
+user_inputs = ["Book a flight from New York to Los Angeles", "I want a hotel in LA."]
+for input_text in user_inputs:
+    intent = lr_model.predict(tfidf_vectorizer.transform([input_text]))[0]
+    response = generate_response(intent, entities, context)
+    print(f"User: {input_text}")
+    print(f"Bot: {response}\n")
